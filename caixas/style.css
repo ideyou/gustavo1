@@ -1,0 +1,23 @@
+.container{
+    display: flex;
+}
+
+.vermelho{
+background-color: red;
+width: 50%;
+height: 250px;
+color: white;
+text-aling: right;
+}
+
+.azul{
+   width: 100%;
+    height: 250px;
+    background-color: blue;
+    color: white;
+    text-align: left;
+
+
+
+
+}

@@ -1,0 +1,12 @@
+{
+  "color": "#000",
+  "background_color": "#FDC802",
+  "icons": [
+    {
+      "src": "profile.png",
+      "sizes": "any",
+      "type": "image/png"
+    }
+  ],
+  "name": "Gustavo Johnatan"
+}

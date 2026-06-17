@@ -1,0 +1,19 @@
+{
+  "id": "GUSTAHUB",
+  "name": "O sonho que e caro",
+  "short_name": "Um dia a gente se esbarrar TWIN",
+  "scope": "./",
+  "start_url": "./",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#ffffff",
+  "icons": [
+    {
+      "src": "profile.avif",
+      "sizes": "any",
+      "type": "image/avif"
+    }
+  ],
+  "app_name": "Isaque's Bucket List",
+  "description": "Meu objetivo e fazer viajes com a TWIN pelo BRASIL 🌍✨"
+}

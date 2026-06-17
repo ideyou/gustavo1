@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo de Corrida de Moto</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        estrada: '#333333',
+                        linha: '#ffffff',
+                        moto: '#e74c3c',
+                        texto: '#2c3e50',
+                    },
+                    fontFamily: {
+                        game: ['Arial', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .estrada-linhas {
+                background: repeating-linear-gradient(
+                    to bottom,
+                    transparent 0px,
+                    transparent 40px,
+                    #ffffff 40px,
+                    #ffffff 80px
+                );
+            }
+            .animar-estrada {
+                animation: moverEstrada 0.5s linear infinite;
+            }
+            @keyframes moverEstrada {
+                0% { background-position: 0 0; }
+                100% { background-position: 0 80px; }
+            }
+            .tela-fundo {
+                background: rgba(0, 0, 0, 0.85);
+            }
+        }
+    </style>
+</head>
+<body class="bg-green-700 font-game flex flex-col items-center justify-center min-h-screen m-0 overflow-hidden">
+    <h1 class="text-[clamp(1.8rem,4vw,3rem)] text-white font-bold mb-4 drop-shadow-lg">Jogo de Corrida de Moto</h1>
+    
+    <!-- Área do jogo -->
+    <div id="areaJogo" class="w-[400px] h-[600px] bg-estrada relative overflow-hidden border-4 border-white rounded-lg shadow-2xl">
+        <!-- Tela Inicial -->
+        <div id="telaInicial" class="absolute w-full h-full tela-fundo z-50 flex flex-col items-center justify-center text-white text-center p-6">
+            <h2 class="text-4xl font-bold mb-6">🏍️ Corrida de Moto</h2>
+            <p class="text-lg mb-4">Use as teclas ← e → para mover</p>
+            <p class="text-md mb-2">✅ Desvie dos obstáculos coloridos</p>
+            <p class="text-md mb-2">⚠️ Se bater: perde pontos e diminui velocidade</p>
+            <p class="text-md mb-8">🔄 Ao bater, o jogo reinicia</p>
+            <button id="botaoIniciar" class="bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-8 rounded-lg text-xl transition-transform hover:scale-105">
+                INICIAR JOGO
+            </button>
+        </div>
+
+        <!-- Tela Game Over -->
+        <div id="telaGameOver" class="absolute w-full h-full tela-fundo z-40 flex flex-col items-center justify-center text-white text-center p-6 hidden">
+            <h2 class="text-5xl font-bold text-red-500 mb-6">GAME OVER</h2>
+            <p class="text-2xl mb-4">Pontuação Final: <span id="pontuacaoFinal">0</span></p>
+            <p class="text-lg mb-8 text-yellow-400">Você bateu em um obstáculo!</p>
+            <div class="flex gap-4">
+                <button id="botaoReiniciar" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-lg text-lg transition-transform hover:scale-105">
+                    JOGAR NOVAMENTE
+                </button>
+                <button id="botaoMenu" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-6 rounded-lg text-lg transition-transform hover:scale-105">
+                    MENU
+                </button>
+            </div>
+        </div>
+
+        <!-- Elementos do jogo -->
+        <div id="linhasEstrada" class="absolute w-[10px] h-full bg-linha left-1/2 -translate-x-1/2 estrada-linhas"></div>
+
+        <div id="moto" class="absolute w-[40px] h-[70px] bg-moto rounded-md bottom-[50px] left-[180px] transition-all duration-100 z-10 flex items-center justify-center text-white text-xs font-bold">
+            <i class="fa fa-motorcycle text-2xl"></i>
+        </div>
+
+        <div id="pontuacao" class="absolute top-4 left-4 text-white text-xl font-bold bg-black/50 px-3 py-1 rounded">Pontos: 0</div>
+        
+        <div id="mensagemColisao" class="absolute top-1/2 left-1/2 -translate-x-1/2 text-white text-lg font-bold bg-red-600/80 px-4 py-2 rounded-lg hidden z-30">
+            Bateu! Velocidade reduzida! ⚠️
+        </div>
+    </div>
+
+    <p class="text-white mt-4 text-lg" id="instrucoes" style="visibility: hidden;">Use as teclas ← e → para mover a moto</p>
+
+    <script>
+        // Elementos
+        const areaJogo = document.getElementById('areaJogo');
+        const telaInicial = document.getElementById('telaInicial');
+        const telaGameOver = document.getElementById('telaGameOver');
+        const botaoIniciar = document.getElementById('botaoIniciar');
+        const botaoReiniciar = document.getElementById('botaoReiniciar');
+        const botaoMenu = document.getElementById('botaoMenu');
+        const pontuacaoFinal = document.getElementById('pontuacaoFinal');
+        const moto = document.getElementById('moto');
+        const linhasEstrada = document.getElementById('linhasEstrada');
+        const pontuacaoEl = document.getElementById('pontuacao');
+        const mensagemColisao = document.getElementById('mensagemColisao');
+        const instrucoes = document.getElementById('instrucoes');
+
+        // Variáveis do jogo
+        let pontuacao = 0;
+        let velocidadeBase = 3; // Velocidade inicial BAIXA como pedido
+        let velocidadeAtual = velocidadeBase;
+        let estaColidindo = false;
+        let jogoRodando = false;
+        let posicaoMoto = 180;
+        let direcaoMovimento = 0;
+        let obstaculos = [];
+        let coresObstaculos = ['#3498db', '#f1c40f', '#9b59b6', '#2ecc71', '#e67e22', '#1abc9c', '#e74c3c', '#f39c12'];
+
+        // Dimensões
+        const larguraJogo = 400;
+        const larguraMoto = 40;
+        const alturaMoto = 70;
+        const larguraObstaculo = 40;
+        const alturaObstaculo = 40;
+
+        // Controles
+        document.addEventListener('keydown', (e) => {
+            if (!jogoRodando) return;
+            if (e.key === 'ArrowLeft') direcaoMovimento = -1;
+            if (e.key === 'ArrowRight') direcaoMovimento = 1;
+        });
+
+        document.addEventListener('keyup', () => {
+            direcaoMovimento = 0;
+        });
+
+        // Criar obstáculo com cor variada
+        function criarObstaculo() {
+            const obstaculo = document.createElement('div');
+            obstaculo.className = 'obstaculo absolute rounded-md';
+            const corAleatoria = coresObstaculos[Math.floor(Math.random() * coresObstaculos.length)];
+            obstaculo.style.backgroundColor = corAleatoria;
+            const posicaoX = Math.floor(Math.random() * (larguraJogo - larguraObstaculo));
+            obstaculo.style.left = `${posicaoX}px`;
+            obstaculo.style.top = `-50px`;
+            obstaculo.style.width = `${larguraObstaculo}px`;
+            obstaculo.style.height = `${alturaObstaculo}px`;
+            
+            areaJogo.appendChild(obstaculo);
+            obstaculos.push({ elemento: obstaculo, y: -50, x: posicaoX });
+        }
+
+        // Verificar colisão
+        function verificarColisao(obst) {
+            const motoRect = moto.getBoundingClientRect();
+            const obstRect = obst.elemento.getBoundingClientRect();
+            const areaJogoRect = areaJogo.getBoundingClientRect();
+
+            const motoX = motoRect.left - areaJogoRect.left;
+            const motoY = motoRect.top - areaJogoRect.top;
+            const obstX = obstRect.left - areaJogoRect.left;
+            const obstY = obstRect.top - areaJogoRect.top;
+
+            return (
+                motoX < obstX + larguraObstaculo &&
+                motoX + larguraMoto > obstX &&
+                motoY < obstY + alturaObstaculo &&
+                motoY + alturaMoto > obstY
+            );
+        }
+
+        // Reiniciar jogo do zero
+        function reiniciarJogoCompleto() {
+            pontuacao = 0;
+            velocidadeAtual = velocidadeBase;
+            estaColidindo = false;
+            jogoRodando = true;
+            posicaoMoto = 180;
+            moto.style.left = `${posicaoMoto}px`;
+            pontuacaoEl.textContent = `Pontos: ${pontuacao}`;
+            
+            obstaculos.forEach(obst => obst.elemento.remove());
+            obstaculos = [];
+            
+            mensagemColisao.classList.add('hidden');
+            telaGameOver.classList.add('hidden');
+            linhasEstrada.classList.add('animar-estrada');
+        }
+
+        // Mostrar Game Over
+        function mostrarGameOver() {
+            jogoRodando = false;
+            linhasEstrada.classList.remove('animar-estrada');
+            pontuacaoFinal.textContent = pontuacao;
+            telaGameOver.classList.remove('hidden');
+        }
+
+        // Loop principal
+        function atualizarJogo() {
+            if (jogoRodando && !estaColidindo) {
+                // Movimento da moto
+                posicaoMoto += direcaoMovimento * 6;
+                posicaoMoto = Math.max(0, Math.min(posicaoMoto, larguraJogo - larguraMoto));
+                moto.style.left = `${posicaoMoto}px`;
+
+                // Velocidade da estrada acompanha a velocidade atual
+                linhasEstrada.style.animationDuration = `${0.5 / (velocidadeAtual / velocidadeBase)}s`;
+
+                // Criar obstáculos
+                if (Math.random() < 0.025) criarObstaculo();
+
+                // Atualizar obstáculos
+                obstaculos.forEach((obst, index) => {
+                    obst.y += velocidadeAtual;
+                    obst.elemento.style.top = `${obst.y}px`;
+
+                    // Se passar da tela: ganha pontos
+                    if (obst.y > 600) {
+                        obst.elemento.remove();
+                        obstaculos.splice(index, 1);
+                        pontuacao += 10;
+                        pontuacaoEl.textContent = `Pontos: ${pontuacao}`;
+                        velocidadeAtual += 0.05; // Aumenta devagar
+                    }
+
+                    // Se bater
+                    if (verificarColisao(obst)) {
+                        estaColidindo = true;
+                        jogoRodando = false;
+                        
+                        // Aplica as regras: reduz velocidade e perde pontos
+                        velocidadeAtual = Math.max(1, velocidadeAtual - 2); // Fica mais lento
+                        pontuacao = Math.max(0, pontuacao - 15); // Perde 15 pontos (não fica negativo)
+                        pontuacaoEl.textContent = `Pontos: ${pontuacao}`;
+
+                        mensagemColisao.classList.remove('hidden');
+
+                        // Espera um pouco e mostra Game Over
+                        setTimeout(() => {
+                            mensagemColisao.classList.add('hidden');
+                            mostrarGameOver();
+                        }, 1200);
+                    }
+                });
+            }
+
+            requestAnimationFrame(atualizarJogo);
+        }
+
+        // Eventos dos botões
+        botaoIniciar.addEventListener('click', () => {
+            telaInicial.classList.add('hidden');
+            instrucoes.style.visibility = 'visible';
+            reiniciarJogoCompleto();
+        });
+
+        botaoReiniciar.addEventListener('click', reiniciarJogoCompleto);
+
+        botaoMenu.addEventListener('click', () => {
+            telaGameOver.classList.add('hidden');
+            telaInicial.classList.remove('hidden');
+            instrucoes.style.visibility = 'hidden';
+            pontuacao = 0;
+            pontuacaoEl.textContent = `Pontos: ${pontuacao}`;
+            obstaculos.forEach(obst => obst.elemento.remove());
+            obstaculos = [];
+        });
+
+        // Iniciar loop
+        atualizarJogo();
+    </script>
+</body>
+</html>
